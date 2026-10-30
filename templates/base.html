@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ proje_adi }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="ust">
+    <a class="marka" href="{{ url_for('liste') }}">{{ proje_adi }}</a>
+    {% if kullanici %}
+    <nav>
+      <a href="{{ url_for('liste') }}">Raporlar</a>
+      {% if rol('yonetici', 'ofis') %}
+        <a href="{{ url_for('ilerleme') }}">İlerleme</a>
+        <a href="{{ url_for('rapor') }}">Dönem raporu</a>
+        <a href="{{ url_for('kalemler') }}">Bütçe kalemleri</a>
+      {% endif %}
+      {% if rol('yonetici') %}<a href="{{ url_for('kullanicilar') }}">Kullanıcılar</a>{% endif %}
+      {% if rol('yonetici', 'personel') %}<a class="dugme" href="{{ url_for('yeni') }}">Bugünü kaydet</a>{% endif %}
+    </nav>
+    {% endif %}
+  </header>
+  <main class="{% block main_sinif %}{% endblock %}">
+    {% with mesajlar = get_flashed_messages(with_categories=true) %}
+      {% for tur, m in mesajlar %}
+        <p class="mesaj {{ 'hata' if tur == 'hata' else '' }}" role="status">{{ m }}</p>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if kullanici %}
+  <footer class="alt yazdirma-yok">
+    <span>{{ kullanici.ad }} ({{ ROLLER[kullanici.rol] }})</span>
+    <a href="{{ url_for('sifre_degistir') }}">Şifre değiştir</a>
+    <form method="post" action="{{ url_for('cikis') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="metin-dugme">Çıkış</button>
+    </form>
+  </footer>
+  {% endif %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

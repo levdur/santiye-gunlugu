@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+{% if rol('yonetici', 'ofis') %}
+<dl class="ozet">
+  <div class="{{ 'iyi' if bugunku else 'uyari' }}"><dt>Bugünün raporu</dt><dd class="metin">{{ 'Girildi' if bugunku else 'Henüz girilmedi' }}</dd></div>
+  <div><dt>Onay bekleyen</dt><dd>{{ onay_bekleyen }}</dd></div>
+  <div class="{{ '' if kalem_sayisi else 'uyari' }}"><dt>Aktif bütçe kalemi</dt><dd>{{ kalem_sayisi }}</dd></div>
+</dl>
+{% endif %}
+{% if not kalem_sayisi and rol('yonetici', 'ofis') %}
+<p class="mesaj">Saha personelinin imalat girebilmesi için önce <a href="{{ url_for('kalemler') }}">bütçe kalemlerini yükleyin</a>.</p>
+{% endif %}
+<h1>Günlük raporlar</h1>
+{% if not kayitlar %}
+  <div class="bos">
+    <p>Henüz rapor yok.{% if rol('yonetici', 'personel') %} İlk günü kaydederek başlayın.{% endif %}</p>
+    {% if rol('yonetici', 'personel') %}<a class="dugme" href="{{ url_for('yeni') }}">Bugünü kaydet</a>{% endif %}
+  </div>
+{% else %}
+  <ol class="kayitlar">
+  {% for k in kayitlar %}
+    <li class="kayit {{ 'onayli' if k.onayli else '' }}">
+      <div class="kayit-bas">
+        <time datetime="{{ k.tarih }}">{{ k.tarih }}</time>
+        <span>{{ k.hava }}{% if k.sicaklik is not none %}, {{ k.sicaklik }}&nbsp;°C{% endif %}</span>
+        <span class="durum">{{ 'Onaylandı' if k.onayli else 'Onay bekliyor' }}</span>
+      </div>
+      {% include "_gun.html" %}
+      {% set fl = fotolar.get(k.id, []) %}
+      {% if fl %}
+        <div class="fotolar">
+          {% for f in fl %}
+            <a href="{{ url_for('foto', foto_id=f.id) }}" target="_blank"><img src="{{ url_for('foto', foto_id=f.id) }}" alt="{{ k.tarih }} fotoğraf {{ loop.index }}" loading="lazy"></a>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <p class="iz">
+        {{ adlar.get(k.olusturan_id, '?') }} girdi, {{ k.olusturma }}
+        {% if k.guncelleme %} · son düzenleme {{ adlar.get(k.guncelleyen_id, '?') }}, {{ k.guncelleme }}{% endif %}
+        {% if k.onayli %} · {{ adlar.get(k.onaylayan_id, '?') }} onayladı, {{ k.onay_zamani }}{% endif %}
+      </p>
+      <div class="islemler">
+        {% if not k.onayli and rol('yonetici', 'personel') %}<a href="{{ url_for('duzenle', kayit_id=k.id) }}">Düzenle</a>{% endif %}
+        {% if rol('yonetici') %}
+          <form method="post" action="{{ url_for('onay', kayit_id=k.id) }}">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button type="submit" class="{{ 'metin-dugme' if k.onayli else 'dugme kucuk' }}">{{ 'Onayı kaldır' if k.onayli else 'Onayla' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('sil', kayit_id=k.id) }}" onsubmit="return confirm('{{ k.tarih }} raporu ve fotoğrafları silinsin mi?');">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button type="submit" class="metin-dugme">Sil</button>
+          </form>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+  </ol>
+{% endif %}
+{% endblock %}

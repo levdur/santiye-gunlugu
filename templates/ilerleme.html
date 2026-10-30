@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}İlerleme · {{ proje_adi }}{% endblock %}
+{% block main_sinif %}genis{% endblock %}
+{% block content %}
+<form method="get" class="rapor-filtre yazdirma-yok">
+  <label>Dönem başı <input type="date" name="bas" value="{{ bas }}"></label>
+  <label>Dönem sonu <input type="date" name="bit" value="{{ bit }}"></label>
+  <label class="onay-kutusu"><input type="checkbox" name="onaysiz" value="1" {% if onaysiz %}checked{% endif %}> Onaysız raporları dahil et</label>
+  <label class="onay-kutusu"><input type="checkbox" name="hepsi" value="1" {% if not sadece_hareketli %}checked{% endif %}> Hareketsiz kalemleri de göster</label>
+  <button type="submit" class="dugme">Göster</button>
+  <a class="dugme ikinci" href="{{ url_for('disa_aktar', bas=bas, bit=bit, onaysiz=1 if onaysiz else None) }}">Excel indir</a>
+  <button type="button" class="metin-dugme" onclick="window.print()">Yazdır / PDF</button>
+</form>
+
+<h1>İlerleme: {{ bit }} itibarıyla</h1>
+<p class="ikincil">Kümülatif miktarlar devir miktarı dahil, {{ bit }} tarihine kadardır; dönem sütunu {{ bas }} – {{ bit }} aralığını gösterir.
+  {{ 'Onaysız raporlar dahil.' if onaysiz else 'Yalnızca onaylı raporlar.' }}</p>
+
+{% if toplam.fiyatli %}
+<dl class="ozet">
+  <div><dt>Bütçe tutarı (sahadan izlenen kalemler)</dt><dd>{{ sayi_bicim(toplam.butce_tutar, 0) }}</dd></div>
+  <div><dt>Kazanılmış değer, kümülatif</dt><dd>{{ sayi_bicim(toplam.kazanilan, 0) }}</dd></div>
+  <div><dt>Dönemde kazanılan</dt><dd>{{ sayi_bicim(toplam.donem_tutar, 0) }}</dd></div>
+  <div><dt>Tamamlanma (tutar ağırlıklı)</dt><dd>{{ yuzde(toplam.oran) }}</dd></div>
+</dl>
+{% endif %}
+
+{% if satirlar %}
+<div class="tablo-kap">
+<table class="ilerleme">
+  <thead><tr>
+    <th>Kod</th><th>Tanım</th><th>Aktivite</th><th class="sayi">Bütçe</th><th class="sayi">Dönem</th>
+    <th class="sayi">Kümülatif</th><th>Tamamlanma</th><th class="sayi">Kalan</th>
+    {% if toplam.fiyatli %}<th class="sayi">Kazanılmış değer</th>{% endif %}
+  </tr></thead>
+  <tbody>
+  {% for s in satirlar %}
+    <tr class="{{ 'asim' if s.asim else '' }}{{ ' pasif' if not s.k.aktif else '' }}">
+      <td class="kod">{{ s.k.kod }}</td>
+      <td>{{ s.k.tanim }}{% if s.asim %}<br><strong class="hata-metni">Bütçe miktarı aşıldı</strong>{% endif %}</td>
+      <td>{{ s.k.aktivite_kodu or '' }}</td>
+      <td class="sayi">{{ sayi_bicim(s.k.butce_miktar) }}&nbsp;{{ s.k.birim }}</td>
+      <td class="sayi">{{ sayi_bicim(s.donem) }}</td>
+      <td class="sayi">{{ sayi_bicim(s.kumulatif) }}</td>
+      <td>
+        {% if s.oran is not none %}
+          <div class="cubuk" role="img" aria-label="Yüzde {{ '%.0f' | format(s.oran * 100) }}"><span style="width: {{ [s.oran * 100, 100] | min }}%"></span></div>
+          {{ yuzde(s.oran) }}
+        {% else %}<span class="ikincil">bütçe yok</span>{% endif %}
+      </td>
+      <td class="sayi">{{ sayi_bicim(s.kalan) }}</td>
+      {% if toplam.fiyatli %}<td class="sayi">{{ sayi_bicim(s.kazanilan, 0) }}</td>{% endif %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="bos">Bu kriterlerde imalat verisi yok. {{ '' if onaysiz else 'Onaysız raporları dahil etmeyi deneyin.' }}</p>
+{% endif %}
+{% endblock %}

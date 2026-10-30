@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Bütçe kalemleri · {{ proje_adi }}{% endblock %}
+{% block content %}
+<h1>Bütçe kalemleri</h1>
+<form method="post" enctype="multipart/form-data" class="form">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>Excel (.xlsx, .xlsm) veya CSV dosyası yükleyin. Bütçe sayfası dosyanın içinde otomatik bulunur. Gerekli sütunlar: <strong>Kod, Tanım, Birim</strong>. İsteğe bağlı: Bütçe miktarı, Birim fiyat, Aktivite kodu, Devir miktarı (sistem öncesi yapılmış kümülatif miktar).
+    <a href="{{ url_for('kalem_sablonu') }}">Şablonu indir</a></p>
+  <p class="ikincil">Aynı kodla tekrar yüklenen kalemler güncellenir. Dosyada olmayan kalemler silinmez. Sahadan veri girilmiş bir kalemin birimi değiştirilmez.</p>
+  <label>Dosya <input type="file" name="dosya" accept=".xlsx,.xlsm,.csv" required></label>
+  <label class="onay-kutusu"><input type="checkbox" name="goturu_kapali" value="1" checked> Götürü (gtr) ve aylık (ay) kalemleri saha listesine kapalı ekle</label>
+  <div class="islemler"><button type="submit" class="dugme">İçe aktar</button></div>
+</form>
+
+{% if kalemler %}
+<div class="tablo-kap">
+<table>
+  <thead><tr><th>Kod</th><th>Tanım</th><th>Birim</th><th class="sayi">Bütçe miktarı</th><th class="sayi">Birim fiyat</th><th>Aktivite</th><th class="sayi">Devir</th><th class="sayi">Saha satırı</th><th>Durum</th></tr></thead>
+  <tbody>
+  {% for k in kalemler %}
+    <tr class="{{ '' if k.aktif else 'pasif' }}">
+      <td class="kod">{{ k.kod }}</td><td>{{ k.tanim }}</td><td>{{ k.birim }}</td>
+      <td class="sayi">{{ sayi_bicim(k.butce_miktar) }}</td><td class="sayi">{{ sayi_bicim(k.birim_fiyat) }}</td>
+      <td>{{ k.aktivite_kodu or '' }}</td><td class="sayi">{{ sayi_bicim(k.devir_miktar) if k.devir_miktar else '' }}</td><td class="sayi">{{ k.kullanim }}</td>
+      <td>
+        <form method="post" action="{{ url_for('kalem_durum', kid=k.id) }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {{ 'Aktif' if k.aktif else 'Pasif' }} · <button type="submit" class="metin-dugme">{{ 'Pasifleştir' if k.aktif else 'Aktifleştir' }}</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="bos">Henüz bütçe kalemi yok. Şablonu indirip doldurun ve yükleyin.</p>
+{% endif %}
+
+<h2 id="siniflar">İşçilik sınıfları</h2>
+<p class="ikincil">Sahadaki formda bu sınıflar için kişi sayısı girilir. Pasif sınıflar formda görünmez.</p>
+<ul class="sinif-listesi">
+  {% for c in siniflar %}
+  <li class="{{ '' if c.aktif else 'pasif' }}">
+    <form method="post" action="{{ url_for('sinif_durum', sid=c.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ c.ad }} <button type="submit" class="metin-dugme">{{ 'pasifleştir' if c.aktif else 'aktifleştir' }}</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+<form method="post" action="{{ url_for('sinif_ekle') }}" class="satir-ici">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="ad" placeholder="Yeni sınıf, ör. İskeleci" aria-label="Yeni işçilik sınıfı" required>
+  <button type="submit" class="dugme kucuk">Ekle</button>
+</form>
+{% endblock %}

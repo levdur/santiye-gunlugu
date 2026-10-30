@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ baslik_metni }} · {{ proje_adi }}{% endblock %}
+{% block content %}
+<h1>{{ baslik_metni }}</h1>
+<form method="post" enctype="multipart/form-data" class="form" id="rapor-formu">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="satir">
+    <label>Tarih <input type="date" name="tarih" value="{{ kayit.tarih }}" max="{{ bugun }}" required></label>
+    <label>Hava
+      <select name="hava" required>
+        <option value="">Seçin</option>
+        {% for h in hava_secenekleri %}<option {% if kayit.hava == h %}selected{% endif %}>{{ h }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Sıcaklık (°C) <input type="number" inputmode="numeric" name="sicaklik" value="{{ kayit.sicaklik if kayit.sicaklik is not none else '' }}"></label>
+  </div>
+
+  <fieldset>
+    <legend>Yapılan imalat</legend>
+    {% if kalemler %}
+    <p class="ikincil">Bütçe kodunu veya imalatın adını yazmaya başlayın, listeden seçin. Birim otomatik gelir.</p>
+    <div id="imalat-satirlari">
+      {% for s in satirlar or [{}] %}
+      <div class="imalat-satiri">
+        <label class="kod-alani">Bütçe kodu
+          <input name="kalem_kod" list="kalem-listesi" value="{{ s.kod or '' }}" autocomplete="off" autocapitalize="none" placeholder="ör. 03.02.01">
+          <span class="kalem-bilgi" aria-live="polite"></span>
+        </label>
+        <label>Miktar <span class="birim"></span>
+          <input name="miktar" type="number" step="any" min="0" inputmode="decimal" value="{{ s.miktar or '' }}">
+        </label>
+        <label class="genis">Lokasyon <input name="lokasyon" value="{{ s.lokasyon or '' }}" placeholder="ör. B blok, 3. kat, aks 1–4"></label>
+        <label class="genis">Açıklama <input name="aciklama" value="{{ s.aciklama or '' }}" placeholder="isteğe bağlı"></label>
+        <button type="button" class="metin-dugme satir-sil" aria-label="Bu satırı kaldır">Kaldır</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="dugme ikinci" id="satir-ekle">İmalat satırı ekle</button>
+    <datalist id="kalem-listesi">
+      {% for k in kalemler %}<option value="{{ k.kod }}">{{ k.tanim }} ({{ k.birim }})</option>{% endfor %}
+    </datalist>
+    {% else %}
+    <p class="mesaj hata">Bütçe kalemleri henüz tanımlanmadı, bu yüzden imalat girilemiyor. Günün bilgisini notlara yazın ve ofise haber verin.</p>
+    {% endif %}
+  </fieldset>
+
+  <fieldset>
+    <legend>İşçilik (kişi sayısı) <span class="ikincil" id="iscilik-toplam"></span></legend>
+    <div class="iscilik-izgara">
+      {% for c in siniflar %}
+        <label>{{ c.ad }} <input type="number" min="0" step="1" inputmode="numeric" name="iscilik_{{ c.id }}" value="{{ iscilik.get(c.id, '') }}"></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <label>Makineler
+    <input type="text" name="makineler" value="{{ kayit.makineler or '' }}" placeholder="ör. 1 mobil vinç, 1 beton pompası">
+  </label>
+  <label>Notlar
+    <textarea name="notlar" rows="3" placeholder="Gecikmeler ve nedenleri, talimatlar, ziyaretler">{{ kayit.notlar or '' }}</textarea>
+  </label>
+  <label>Fotoğraf ekle <span class="ikincil">(en fazla 10, telefonda kamera açılır)</span>
+    <input type="file" name="foto" accept="image/*" multiple>
+  </label>
+  <div class="islemler">
+    <button type="submit" class="dugme">Kaydet</button>
+    <a href="{{ url_for('liste') }}">Vazgeç</a>
+  </div>
+</form>
+
+{% if fotolar %}
+<h2>Mevcut fotoğraflar</h2>
+<div class="fotolar duzenle">
+  {% for f in fotolar %}
+    <figure>
+      <img src="{{ url_for('foto', foto_id=f.id) }}" alt="Fotoğraf {{ loop.index }}" loading="lazy">
+      {% if rol('yonetici') or f.yukleyen_id == kullanici.id %}
+      <form method="post" action="{{ url_for('foto_sil', foto_id=f.id) }}" onsubmit="return confirm('Fotoğraf silinsin mi?');">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="metin-dugme">Sil</button>
+      </form>
+      {% endif %}
+    </figure>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var secenekler = document.querySelectorAll("#kalem-listesi option");
+  var kalemler = {};
+  secenekler.forEach(function (o) {
+    var m = o.textContent.match(/^(.*) \(([^()]*)\)$/);
+    kalemler[o.value] = { tanim: m ? m[1] : o.textContent, birim: m ? m[2] : "" };
+  });
+  function guncelle(satir) {
+    var kod = satir.querySelector("[name=kalem_kod]").value.trim();
+    var k = kalemler[kod];
+    satir.querySelector(".kalem-bilgi").textContent = k ? k.tanim : (kod ? "Listede yok" : "");
+    satir.querySelector(".kalem-bilgi").classList.toggle("hata-metni", !!kod && !k);
+    satir.querySelector(".birim").textContent = k ? "(" + k.birim + ")" : "";
+  }
+  var kap = document.getElementById("imalat-satirlari");
+  if (kap) {
+    kap.querySelectorAll(".imalat-satiri").forEach(guncelle);
+    kap.addEventListener("input", function (e) {
+      if (e.target.name === "kalem_kod") guncelle(e.target.closest(".imalat-satiri"));
+    });
+    kap.addEventListener("click", function (e) {
+      if (!e.target.classList.contains("satir-sil")) return;
+      var satirlar = kap.querySelectorAll(".imalat-satiri");
+      var satir = e.target.closest(".imalat-satiri");
+      if (satirlar.length > 1) satir.remove();
+      else satir.querySelectorAll("input").forEach(function (i) { i.value = ""; }), guncelle(satir);
+    });
+    document.getElementById("satir-ekle").addEventListener("click", function () {
+      var yeni = kap.querySelector(".imalat-satiri").cloneNode(true);
+      yeni.querySelectorAll("input").forEach(function (i) { i.value = ""; });
+      kap.appendChild(yeni);
+      guncelle(yeni);
+      yeni.querySelector("[name=kalem_kod]").focus();
+    });
+  }
+  var izgara = document.querySelector(".iscilik-izgara");
+  function toplam() {
+    var t = 0;
+    izgara.querySelectorAll("input").forEach(function (i) { t += parseInt(i.value, 10) || 0; });
+    document.getElementById("iscilik-toplam").textContent = t ? "– toplam " + t + " kişi" : "";
+  }
+  if (izgara) { izgara.addEventListener("input", toplam); toplam(); }
+})();
+</script>
+{% endblock %}

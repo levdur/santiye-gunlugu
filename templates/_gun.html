@@ -1,0 +1,25 @@
+{# Bir günlük raporun imalat ve işçilik özeti; liste ve dönem raporunda ortak kullanılır #}
+{% set im = imalat.get(k.id, []) %}
+{% set isc = iscilik.get(k.id, []) %}
+{% if im %}
+<table class="satirlar">
+  <thead><tr><th>Bütçe kodu</th><th>İmalat</th><th class="sayi">Miktar</th><th>Lokasyon</th></tr></thead>
+  <tbody>
+  {% for s in im %}
+    <tr>
+      <td class="kod">{{ s.kod }}</td>
+      <td>{{ s.tanim }}{% if s.aciklama %}<br><span class="ikincil">{{ s.aciklama }}</span>{% endif %}</td>
+      <td class="sayi">{{ sayi_bicim(s.miktar, 3) }}&nbsp;{{ s.birim }}</td>
+      <td>{{ s.lokasyon or '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% if isc %}
+<p class="iscilik"><strong>İşçilik:</strong>
+  {% for s in isc %}{{ s.ad }} {{ s.kisi }}{% if not loop.last %} · {% endif %}{% endfor %}
+  <span class="ikincil">(toplam {{ isc | sum(attribute='kisi') }} kişi)</span></p>
+{% endif %}
+{% if k.makineler %}<p class="ikincil">Makineler: {{ k.makineler }}</p>{% endif %}
+{% if k.notlar %}<p class="ikincil">Not: {{ k.notlar }}</p>{% endif %}

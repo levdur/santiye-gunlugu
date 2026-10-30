@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Kullanıcılar · {{ proje_adi }}{% endblock %}
+{% block content %}
+<h1>Kullanıcılar</h1>
+<div class="tablo-kap">
+<table>
+  <thead><tr><th>Ad soyad</th><th>Kullanıcı adı</th><th>Rol</th><th>Durum</th><th>Şifre sıfırla</th></tr></thead>
+  <tbody>
+  {% for u in kullanicilar %}
+    <tr class="{{ '' if u.aktif else 'pasif' }}">
+      <td>{{ u.ad }}</td>
+      <td>{{ u.kullanici_adi }}</td>
+      <td>{{ ROLLER[u.rol] }}</td>
+      <td>
+        {% if u.id != kullanici.id %}
+        <form method="post" action="{{ url_for('kullanici_durum', kid=u.id) }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {{ 'Aktif' if u.aktif else 'Pasif' }} ·
+          <button type="submit" class="metin-dugme">{{ 'Pasifleştir' if u.aktif else 'Aktifleştir' }}</button>
+        </form>
+        {% else %}Aktif (siz){% endif %}
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('kullanici_sifre_sifirla', kid=u.id) }}" class="satir-ici">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="text" name="sifre" minlength="8" placeholder="Yeni şifre" autocomplete="off" aria-label="{{ u.ad }} için yeni şifre">
+          <button type="submit" class="metin-dugme">Sıfırla</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2>Yeni kullanıcı</h2>
+<form method="post" class="form">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="satir">
+    <label>Ad soyad <input name="ad" required></label>
+    <label>Kullanıcı adı <input name="kullanici_adi" autocapitalize="none" placeholder="ör. ahmet" required></label>
+    <label>Şifre (en az 8 karakter) <input type="text" name="sifre" minlength="8" autocomplete="off" required></label>
+    <label>Rol
+      <select name="rol">
+        <option value="personel">Saha personeli</option>
+        <option value="ofis">Ofis (bütçe/planlama)</option>
+        <option value="yonetici">Yönetici</option>
+      </select>
+    </label>
+  </div>
+  <div class="islemler"><button type="submit" class="dugme">Kullanıcı oluştur</button></div>
+</form>
+<p class="ikincil">Saha personeli rapor girer. Ofis kullanıcıları tüm verileri görür ve Excel indirir ama değiştiremez. Pasifleştirilen kullanıcı giriş yapamaz; girdiği kayıtlar silinmez.</p>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Dönem raporu {{ bas }} / {{ bit }} · {{ proje_adi }}{% endblock %}
+{% block content %}
+<form method="get" class="rapor-filtre yazdirma-yok">
+  <label>Başlangıç <input type="date" name="bas" value="{{ bas }}"></label>
+  <label>Bitiş <input type="date" name="bit" value="{{ bit }}"></label>
+  <label class="onay-kutusu"><input type="checkbox" name="foto" value="1" {% if foto_goster %}checked{% endif %}> Fotoğrafları ekle</label>
+  <button type="submit" class="dugme">Raporu göster</button>
+  <button type="button" class="metin-dugme" onclick="window.print()">Yazdır / PDF</button>
+</form>
+
+<h1>{{ proje_adi }}: dönem raporu {{ bas }} – {{ bit }}</h1>
+<dl class="ozet">
+  <div><dt>Raporlu gün</dt><dd>{{ ozet.gun }}</dd></div>
+  <div><dt>Toplam adam-gün</dt><dd>{{ ozet.adam_gun }}</dd></div>
+  <div class="{{ 'uyari' if ozet.onaysiz else '' }}"><dt>Onaysız rapor</dt><dd>{{ ozet.onaysiz }}</dd></div>
+  <div><dt>Hava</dt><dd class="metin">{% for h, n in ozet.hava %}{{ h }} ({{ n }}){% if not loop.last %}, {% endif %}{% else %}–{% endfor %}</dd></div>
+</dl>
+{% if sinif_toplam %}
+<p class="iscilik"><strong>Sınıf bazında adam-gün:</strong>
+  {% for ad, n in sinif_toplam %}{{ ad }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% endif %}
+
+{% for k in kayitlar %}
+<section class="gun-blok">
+  <h2>{{ k.tarih }} <span class="ikincil">{{ k.hava }}{% if k.sicaklik is not none %}, {{ k.sicaklik }}&nbsp;°C{% endif %}
+    · {{ adlar.get(k.olusturan_id, '?') }} · {{ 'Onaylı' if k.onayli else 'Onaysız' }}</span></h2>
+  {% include "_gun.html" %}
+  {% if foto_goster and fotolar.get(k.id) %}
+    <div class="fotolar rapor">
+      {% for f in fotolar.get(k.id) %}<img src="{{ url_for('foto', foto_id=f.id) }}" alt="{{ k.tarih }} fotoğraf {{ loop.index }}">{% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% else %}
+<p class="bos">Bu tarih aralığında rapor yok. Farklı bir aralık seçin.</p>
+{% endfor %}
+{% endblock %}
